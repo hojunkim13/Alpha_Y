@@ -7,6 +7,7 @@ import time
 import threading
 import logging
 import os
+import asyncio
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -21,8 +22,9 @@ def load_db():
     try:
         db = pd.read_csv('db.csv', index_col = 0, header = 0)
     except:
-        db = pd.dbFrame()
-    return db
+        db = pd.DataFrame()
+    sdb = pd.read_csv('item/items.csv', index_col = 0, header= 0)
+    return db, sdb
 
 def log_db(db):
     db.to_csv('db.csv')
@@ -41,9 +43,9 @@ def get_points(speaker, prob):
 
 ###########################################################
 ay = commands.Bot(command_prefix='.')
-lotto_prob = [(1-1e-5)/9]*9
-lotto_prob.append(1e-5)
-db = load_db()
+lotto_prob = [(1-1e-4)/9]*9
+lotto_prob.append(1e-4)
+db, sdb = load_db()
 log_db(db)
 print('init done.')
 
@@ -75,10 +77,18 @@ async def command(ctx):
     await ctx.send(msg)
 
 @ay.command(name='지갑')
-async def wallet(ctx):
-    speaker = ctx.message.author.name
-    cash = db.loc[speaker, 'wallet']
-    msg = f'{speaker}님이 보유하신 포인트는 {int(cash)}pt 입니다.'
+async def wallet(ctx, name = None):
+    if name == None:
+        name = ctx.message.author.name
+    else:
+        try:
+            cash = db.loc[name, 'wallet']
+            msg = f'{name}님이 보유하신 포인트는 {int(cash)}pt 입니다.'
+            if int(cash) in [111, 222, 333, 444, 555, 666, 777, 888, 999, 369]:
+                db.loc[name, 'wallet'] = db.loc[name, 'wallet'] + 10
+                msg += f'\n포인트 확인 보너스 10점!'
+        except:
+            msg = f'{name}가 누구인지 모르겠어.'
     await ctx.send(msg)
 
 @ay.command(name='청소')
@@ -99,6 +109,16 @@ async def clear(ctx, amount = 50, bot = 1):
                                         check = _check)
         await ctx.send(f"{len(deleted):,} 개의 메세지를 삭제했습니다.", delete_after = 5)
 
+
+@ay.command(name='상품')
+async def item(ctx):
+    embed=discord.Embed(title="상품 교환소", description="포인트를 상품으로 교환할 수 있습니다.", color=0x5cb85c)
+    embed.set_author(name="Alpha Y")
+    embed.set_thumbnail(url="https://cdn.icon-icons.com/icons2/651/PNG/512/Icon_Business_Set_00003_A_icon-icons.com_59841.png")
+    for index, items in sdb.iterrows():
+        embed.add_field(name = f"{index} [{items['개수']}]", value = f"{items['가격']}", inline = False)
+    await ctx.send(embed=embed)
+    
 #############################
 ay.run(os.getenv('TOKEN'))
 
