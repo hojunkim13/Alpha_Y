@@ -101,6 +101,6 @@ async def clear(ctx, amount = 50, bot = 1):
 
 #############################
 ay.run(os.getenv('TOKEN'))
-
+##Todo 홀짝 , 포인트빵, 지갑 삼육구 666 111 이벤트
 
 
