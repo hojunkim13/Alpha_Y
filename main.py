@@ -43,11 +43,10 @@ def get_points(speaker, prob):
     rand_points = np.random.choice(range(1, 11), p=prob)
     try:
         if rand_points == 10:
-            db.loc[speaker, 'wallet'] = db.loc[speaker, 'wallet'] + 1000
+            db.loc[speaker, 'wallet'] +=  000
             return True
         else:
-            db.loc[speaker, 'wallet'] = db.loc[speaker,
-                                               'wallet'] + rand_points * 0.15
+            db.loc[speaker, 'wallet'] += rand_points * 0.15
     except KeyError:
         db.loc[speaker, 'wallet'] = 0
 
@@ -68,7 +67,6 @@ async def on_ready():
     print('------------')
     status_list = [discord.Status.idle, discord.Status.online]
     activity_list = [discord.Game("Who am I..?"),
-                    discord.Streaming(name = '루밍쨩', url='https://www.twitch.tv/1uming'),
                     discord.Streaming(name = '랄숭이', url='https://www.twitch.tv/aba4647'),
                     discord.Activity(type=discord.ActivityType.listening, name="사쿠란보"),
                     discord.Activity(type=discord.ActivityType.watching, name="ㅎㅎ;; ㅋㅋ;; ㅈㅅ!!")]
@@ -114,7 +112,7 @@ async def wallet(ctx, name=None):
         cash = db.loc[name, 'wallet']
         msg = f'{name}님이 보유하신 포인트는 {int(cash)}pt 입니다.'
         if int(cash) in [111, 222, 333, 444, 555, 666, 777, 888, 999, 369]:
-            db.loc[name, 'wallet'] = db.loc[name, 'wallet'] + 10
+            db.loc[name, 'wallet'] += 10
             msg += f'\n포인트 확인 보너스 10pt가 지급되었습니다!'
     except:
         if prop_checker(ctx.message.author.name):
@@ -193,8 +191,8 @@ async def give_pt(ctx, *taker):
             await ctx.send('어 돈복사 버그는 막아놧다^^')
             return
         print(f'Give PT: {giver}>>{taker}, {amount}pt')
-        db.loc[giver, "wallet"] = db.loc[giver, "wallet"] - amount
-        db.loc[taker, "wallet"] = db.loc[taker, "wallet"] + amount
+        db.loc[giver, "wallet"] -= amount
+        db.loc[taker, "wallet"] += amount
         await ctx.send(f'{giver}님이 {amount}pt 를 {taker}님께 선물했습니다! 👍')
     except asyncio.TimeoutError:
         await ctx.send('시간 초과! ⏲')
@@ -206,8 +204,8 @@ async def give_pt(ctx, *taker):
 @ay.command(name = '상품구입')
 async def purchase(ctx, items_idx, quantity = 1):
     try:
-        items_dix = int(items_idx)-1
-        items = sdb.index[items_dix]
+        items_idx = int(items_idx)-1
+        items = sdb.index[items_idx]
         quantity = int(quantity)
     except:
         await ctx.send(f'숫자만 입력 가능합니다.')
@@ -238,16 +236,92 @@ async def purchase(ctx, items_idx, quantity = 1):
             await ctx.message.author.dm_channel.send(file = file)
         os.remove(storage_path+target_items[i])
     await ctx.message.author.dm_channel.send('🍰 구매하신 상품이 도착했습니다.')
-    sdb.loc[items, '개수'] = sdb.loc[items, '개수'] - quantity
-    db.loc[buyer, 'wallet'] = cash - (price * quantity)
+    sdb.loc[items, '개수'] -= quantity
+    db.loc[buyer, 'wallet'] -=  (price * quantity)
     msg = f'🍰 해당 상품을 구매하셨습니다!\n{buyer}님의 잔고 : {int(db.loc[buyer, "wallet"])}pt\n'+\
         '# 개인 메세지를 확인해주세요.'
     print(f'Buy item: {buyer} >> {items}, {quantity}개')
     await ctx.send(msg)
 
-#############################
-# 👍🍰
-ay.run(os.getenv('TOKEN'))
-# Todo 홀짝 , 포인트빵, 가챠 슬롯머신
+@ay.command(name='가챠')
+async def gacha(ctx):
+    player = ctx.message.author.name
+    if db.loc[player, 'wallet'] < 100:
+        if prop_checker(player):
+            msg = f'어 {player}아 씨드 100pt 없으면 저기 돈복사방 가서 앵벌이해라'
+        else:
+            msg = f'어 {player}야 씨드 100pt 없으면 저기 돈복사방 가서 앵벌이해라'
+        await ctx.send(msg)
+        return
+    db.loc[player, 'wallet'] -=  100
+    await ctx.send("가챠를 시작합니다...")
+    #value = [-200, -50 ,0, 70, 200, 250, 400, 500, 8200]
+    value  = [-200, -50 ,0, 70, 200, '츄파춥스', 400, '새콤달콤', '투썸 아메리카노 Regular 2잔']
+    gift_val = value[np.random.choice(range(len(value)),
+                p = [.05, .255, .24, .21, .12, .06, .04, .02, .005])]
+    await ctx.send("결과는 . . . . !")
+    if isinstance(gift_val, int):    
+        for n in str(abs(gift_val)) :
+            await asyncio.sleep(np.random.randint(2,5))
+            await ctx.send(f". . . {n}")
+        if gift_val > 100:
+            await ctx.send("축하합니다! ...")
+            await asyncio.sleep(np.random.randint(2))
+            await ctx.send(f"💰💰💰 {gift_val}pt 당첨!!! 💰💰💰")
+        elif gift_val >= 0:
+            await ctx.send(f"💰 크흠.. 어질어질해요~ 💰{gift_val}pt 획득..")
+        elif gift_val < 0:
+            await ctx.send("축하합니다! ...")
+            await asyncio.sleep(np.random.randint(2))
+            await ctx.send(f"🎇{gift_val:+}pt 감점!!!🎇")
+        db.loc[player, 'wallet'] += int(gift_val)
+        try:
+            db.loc[player, 'blackcow'] += int(gift_val)
+        except KeyError:
+            db.loc[player, 'blackcow'] = int(gift_val)
+    else:
+        if sdb.loc[gift_val,"개수"] < 1:
+            db.loc[player, 'wallet'] +=  sdb.loc[gift_val,'가격']
+            await ctx.send(f"🎁 {gift_val} 당첨! 재고가 없어 {sdb.loc[gift_val,'가격']}pt로 지급합니다!")
+            
+        else:
+            storage_path = 'item/storage/'
+            target_items = [i for i in item_list if gift_val[:2] in i][0]
+            file = discord.File(storage_path+target_items)
+            if ctx.message.author.dm_channel:
+                await ctx.message.author.dm_channel.send(file = file)
+            elif ctx.message.author.dm_channel is None:
+                channel = await ctx.message.author.create_dm()
+                await ctx.message.author.dm_channel.send(file = file)
+            os.remove(storage_path+target_items)
+            sdb.loc[gift_val, '개수'] = sdb.loc[gift_val, '개수'] - 1
+            await ctx.message.author.dm_channel.send('🎁 상품이 도착했습니다.')
+            await ctx.send("🎁 상품 당첨! 귀\n여운{gift_val[0]}\n{gift_val[1:]}을 드리겠습니다~")
+        
+        try:
+            db.loc[player, 'blackcow'] += sdb.loc[gift_val,'가격']
+        except KeyError:
+            db.loc[player, 'blackcow'] = sdb.loc[gift_val,'가격']
 
-    
+@ay.command(name="흑우의전당")
+async def blackcow_show(ctx):
+    bcs = db['blackcow'].sort_values(ascending=False)
+    bc_list = bcs.index.to_list()
+    value_list = bcs.to_list()
+    embed=discord.Embed(title="흑우의 전당", description="가챠에서 가장 높은 득점을 한 순위입니다.", color=0xdd4040)
+    embed.set_thumbnail(url="https://cdn.icon-icons.com/icons2/2526/PNG/512/award_medal_winner_icon_151762.png")
+    for i in range(len(bc_list)):
+        embed.add_field(name=f"{i+1}. {bc_list[i]}", value=f"{value_list[i]:+.0f}pt", inline=False)
+        if i == 2:
+            break
+    await ctx.send(embed=embed)
+
+#############################
+# 
+ay.run(os.getenv('TOKEN'))
+# Todo 홀짝 , 포인트빵, 가챠 슬롯머신, 명예의전당
+
+# ? 가차시스템. 꽝, 0.5배 , 2배, 츄파춥스, 4배, 새콤달콤,투썸>>> 7개
+# ?           25   25    15,    12,    10    10      3
+# ?                   60     75     87    97       
+# ? 포인트훔치기 시스템
