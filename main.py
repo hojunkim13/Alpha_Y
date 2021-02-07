@@ -126,7 +126,8 @@ async def command(ctx):
     embed.add_field(name=".가챠", value="100pt로 가챠 게임을 시작합니다.", inline=False)
     embed.add_field(name=".흑우의전당", value="가챠 수익 순위를 확인합니다.", inline=False)
     embed.add_field(name=".랭킹", value="포인트 보유 순위를 확인합니다.", inline=False)
-    embed.add_field(name=".정보설정", value="타인의 정보를 설정할 수 있습니다. 본인은 안됨!", inline=False)
+    embed.add_field(name=".정보설정 [이름]", value="타인의 정보를 설정할 수 있습니다. 본인은 안됨!", inline=False)
+    embed.add_field(name=".타이머 [초]", value="타이머를 시작합니다.", inline=False)
     await ctx.send(embed=embed)
 
 
