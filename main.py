@@ -89,6 +89,7 @@ async def on_ready():
 
 @ay.event
 async def on_message(message):
+    global db
     if message.author == ay.user:
         return
     if message.author.bot:
@@ -97,7 +98,8 @@ async def on_message(message):
     userid = message.author.id
     name = message.author.name if message.author.nick == None else message.author.nick 
     if userid not in db.index:
-        db.loc[userid] = 0
+        db.loc[int(userid)] = 0
+        db = db.index.astype("int")
     db.loc[userid,'name'] = name
     if not isinstance(message.channel, discord.channel.DMChannel):
         gift = get_points(userid, lotto_prob)
@@ -131,7 +133,7 @@ async def command(ctx):
     await ctx.send(embed=embed)
 
 
-@ay.command(name='소지품', aliases=['인벤토리', '스테이터스 오픈', '가방', '지갑'])
+@ay.command(name='소지품', aliases=['인벤토리', '가방', '지갑'])
 async def wallet(ctx, *name):
     if name == ():
         uid = ctx.message.author.id
@@ -429,16 +431,64 @@ async def timer(ctx, *args):
 
 @ay.command(name="관리자")
 async def admin(ctx, *args):
-    if args[0] == "포인트":
-        target_id = db.loc[db["name"] == args[1]]
+    if ctx.message.author.id != 398359177682092042:
+        await ctx.send("관리자만 사용 가능합니다.")
+        return
+    await ctx.send("명령어를 입력해주세요.\n# 포인트, 가챠티켓, 상품등록, 상품제거")
+    def check(msg):
+        return msg.author.id == 398359177682092042 and msg.channel == ctx.channel
+    try:
+        reply = await ay.wait_for("message", check=check, timeout=10)
+        if "취소" in reply.content:
+            await ctx.send("취소하셨습니다!")
+            return
+        cmd = reply.content.split(" ")
+        target_name = cmd[1]
+        target_id = db.loc[db["name"] == target_name].index
+        if len(target_id) != 1:
+            await ctx.send("해당 이름을 가진 유저가 없거나 2명 이상입니다.")
+            return
+        target_id = target_id[0]
+        if cmd[0] == "포인트":
+            #포인트 호준 1
+            amount = int(cmd[2])
+            db.loc[target_id, "wallet"] += amount
+            await ctx.send(f"{target_name}님의 포인트 {amount:+} 했습니다.")
+        elif cmd[0] == "가챠티켓":
+            amount = int(cmd[2])
+            db.loc[target_id, "gticket"] += amount
+            await ctx.send(f"{target_name}님의 가챠티켓 {amount:+} 했습니다.")
+        elif cmd[0] == "상품등록":
+            #상품등록 김호준 츄파춥스 250
+            item = " ".join(cmd[2:-1])
+            owner = target_name
+            price = int(cmd[-1])
+            await ctx.send("몇개를 추가하시겠습니까?")
+            reply = await ay.wait_for("message", check = check, timeout=10)
+            amount = int(reply.content)
+            if item not in sdb.index:
+                quantity = amount
+                item_dict = {"상품":item,"가격":price,"개수":quantity,"등록자":owner}
+                sdb = sdb.append(item_dict, ignore_index = True)
+                await ctx.send("정상적으로 등록되었습니다.")
+            else:
+                sdb.loc[item,"개수"] += amount
+                await ctx.send("정상적으로 등록되었습니다.")
+        elif cmd[0] == "상품제거":
+            #상품삭제 투썸 머머머머
+            item = " ".join(cmd[1:])
+            sdb.drop([item], inplace = True)
+            await ctx.send("정상적으로 제거되었습니다.")
+    except asyncio.TimeoutError:
+        await ctx.send('시간 초과! ⏲')
+        return
         
-
     
 
 #############################
 # 
 ay.run(os.getenv('TOKEN'))
-# Todo 홀짝 , 포인트빵, 가챠 슬롯머신,지갑순위, 포인트훔치기 시스템
+# 홀짝 , 포인트빵, 가챠 슬롯머신,지갑순위, 포인트훔치기 시스템
 
 # ? 
 # ?  
