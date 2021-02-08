@@ -396,6 +396,7 @@ async def gacha(ctx):
         db.loc[player_id, 'wallet'] = 0
 
 @ay.command(name="흑우의전당")
+@commands.guild_only()
 async def blackcow_show(ctx):
     bcs = db.sort_values(by=['blackcow'], ascending=False)
     bc_list = bcs['name'].to_list()
@@ -409,6 +410,7 @@ async def blackcow_show(ctx):
     await ctx.send(embed=embed)
 
 @ay.command(name="랭킹")
+@commands.guild_only()
 async def ranking_show(ctx):
     rankers = db.sort_values(by=['wallet'], ascending=False)
     rankers_list = rankers['name'].to_list()
@@ -484,8 +486,36 @@ async def admin(ctx, *args):
         return
         
     
+@ay.command(name="홀짝")
+@commands.guild_only()
+async def gamble1(ctx):
+    player_id = ctx.author.id
+    player_name = ctx.author.name
+    player_cash = db[player_id, "wallet"]
+    if player_cash < 50:
+        await ctx.send("어 시드 없으면 눈치챙겨라")
+        return
+    def check(msg):
+        return msg.author == ctx.author and msg.channel == ctx.channel 
+    await ctx.send("얼마 만큼 거시겠습니까? [Minium : 50 pt]")
+    reply = await ay.wait_for("message", check=check, timeout = 7)
+    amount = int(reply.content)
+    if amount < 50:
+        await ctx.send("남자답게 50원이상 ㄱㄱ")
+        return
+    if player_cash < amount:
+        await ctx.send("돈 가져와 돈")
+        return
+    db[player_id, "wallet"] -= amount
 
-#############################
+    answer = np.random.randint(2)
+    if pred == answer:
+        await ctx.send("정답입니다! 재도전 하기..?")
+        reply = await ay.wait_for("message", check=check, timeout = 30)
+
+
+
+##########################################################
 # 
 ay.run(os.getenv('TOKEN'))
 # 홀짝 , 포인트빵, 가챠 슬롯머신,지갑순위, 포인트훔치기 시스템
