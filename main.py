@@ -80,15 +80,14 @@ async def command(ctx):
 async def wallet(ctx, name = None):
     if name == None:
         name = ctx.message.author.name
-    else:
-        try:
-            cash = db.loc[name, 'wallet']
-            msg = f'{name}님이 보유하신 포인트는 {int(cash)}pt 입니다.'
-            if int(cash) in [111, 222, 333, 444, 555, 666, 777, 888, 999, 369]:
-                db.loc[name, 'wallet'] = db.loc[name, 'wallet'] + 10
-                msg += f'\n포인트 확인 보너스 10점!'
-        except:
-            msg = f'{name}가 누구인지 모르겠어.'
+    try:
+        cash = db.loc[name, 'wallet']
+        msg = f'{name}님이 보유하신 포인트는 {int(cash)}pt 입니다.'
+        if int(cash) in [111, 222, 333, 444, 555, 666, 777, 888, 999, 369]:
+            db.loc[name, 'wallet'] = db.loc[name, 'wallet'] + 10
+            msg += f'\n포인트 확인 보너스 10점!'
+    except:
+        msg = f'{name}가 누구인지 모르겠어.'
     await ctx.send(msg)
 
 @ay.command(name='청소')
@@ -116,7 +115,7 @@ async def item(ctx):
     embed.set_author(name="Alpha Y")
     embed.set_thumbnail(url="https://cdn.icon-icons.com/icons2/651/PNG/512/Icon_Business_Set_00003_A_icon-icons.com_59841.png")
     for index, items in sdb.iterrows():
-        embed.add_field(name = f"{index} [{items['개수']}]", value = f"{items['가격']}", inline = False)
+        embed.add_field(name = f"{index} [left: {items['개수']}]", value = f"가격 : {items['가격']}pt", inline = False)
     await ctx.send(embed=embed)
     
 #############################
