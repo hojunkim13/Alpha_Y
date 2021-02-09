@@ -8,7 +8,7 @@ import logging
 import os
 import asyncio
 from dotenv import load_dotenv
-from utils import prop_checker
+from utils import prop_checker, data_collector, log_db, load_db
 
 intents = discord.Intents.default()
 intents.members = True
@@ -22,53 +22,19 @@ handler.setFormatter(logging.Formatter(
 logger.addHandler(handler)
 ###################################
 
-
-def load_db():
-    try:
-        db = pd.read_csv('db.csv', index_col=0, header=0)
-    except:
-        db = pd.DataFrame()
-    sdb = pd.read_csv('item/items.csv', index_col=0, header=0)
-    return db, sdb
-
-
-def log_db(db):
-    db.to_csv('db.csv')
-    sdb.to_csv('item/items.csv')
-    threading.Timer(5, function=log_db, args=(db,)).start()
-
-
-def get_points(id, prob):
-    rand_points = np.random.choice(range(1, 12), p=prob)
-    
-    if rand_points == 11:
-        try:
-            db.loc[id, 'wallet'] +=  1000
-        except KeyError:
-            db.loc[id, 'wallet'] = 1000
-        return 'lotto'
-    elif rand_points ==  10:
-        try:
-            db.loc[id, 'gticket'] += 1
-        except KeyError:
-            db.loc[id, 'gticket'] = 1
-        return 'gticket'
-    else:
-        try:
-            db.loc[id, 'wallet'] += rand_points * 0.15
-        except KeyError:
-            db.loc[id, 'wallet'] = rand_points * 0.15
-        return None
-        
-
+def log_db():
+    db.to_csv('db.csv', encoding = 'utf-8')
+    sdb.to_csv('item/items.csv', encoding = 'utf-8')
+    nlp_log.to_csv("NLP_log.csv", encoding = "utf-8")
+    threading.Timer(5, function = log_db).start()
 
 ###########################################################
 lotto_prob = [0.111] * 9
 lotto_prob.append(0.001 - (1e-4))
 lotto_prob.append(1e-4)
 ###########################################################
-db, sdb = load_db()
-log_db(db)
+db, sdb, nlp_log = load_db()
+log_db()
 ay = commands.Bot(command_prefix='.', intents=intents)
 
 
@@ -79,9 +45,9 @@ async def on_ready():
     print('------------')
     status_list = [discord.Status.idle, discord.Status.online]
     activity_list = [discord.Game("Who am I..?"),
-                    discord.Streaming(name = '랄숭이', url='https://www.twitch.tv/aba4647'),
-                    discord.Activity(type=discord.ActivityType.listening, name="사쿠란보"),
-                    discord.Activity(type=discord.ActivityType.watching, name="ㅎㅎ;; ㅋㅋ;; ㅈㅅ!!")]
+                    discord.Streaming(name = '랄루', url='https://www.twitch.tv/aba4647'),
+                    discord.Activity(type=discord.ActivityType.listening, name="Twilight - Kotaro Oshio"),
+                    discord.Activity(type=discord.ActivityType.watching, name="PAKA")]
     status = status_list[np.random.choice(len(status_list), p = [0.1,0.9])]
     activity = np.random.choice(activity_list)
     await ay.change_presence(activity=activity)
@@ -89,29 +55,50 @@ async def on_ready():
 
 @ay.event
 async def on_message(message):
-    global db
+    global db, sdb, nlp_log
     if message.author == ay.user:
         return
     if message.author.bot:
         return
+    nlp_log = data_collector(message,db,nlp_log)
     #register
     userid = message.author.id
-    name = message.author.name if message.author.nick == None else message.author.nick 
+    try:
+        if message.author.nick == None:
+            name = message.author.name
+        else:
+            name = message.author.nick
+    except AttributeError:
+        name = message.author.name
     if userid not in db.index:
         db.loc[int(userid)] = 0
         db = db.index.astype("int")
     db.loc[userid,'name'] = name
     if not isinstance(message.channel, discord.channel.DMChannel):
-        gift = get_points(userid, lotto_prob)
-        if gift == 'lotto':
+        rand_points = np.random.choice(range(1, 12), p=lotto_prob)
+        if rand_points == 11:
+            try:
+                db.loc[userid, 'wallet'] += 1000
+            except KeyError:
+                db.loc[userid, 'wallet'] = 1000 
             print(f'{name} get 1000pts through Lotto')
             msg = f'📀 축하합니다! {name}님이 행운의 포인트 1000점을 획득하셨습니다!📀\n' +\
                     '포인트 확인: .소지품'
             await message.channel.send(msg)
-        elif gift == 'gticket':
+        elif rand_points ==  10:
+            try:
+                db.loc[userid, 'gticket'] += 1
+            except KeyError:
+                db.loc[userid, 'gticket'] = 1
             print(f'{name} gets gacha ticket')
             msg = f"🎉 축하합니다! {name}님이 🎫가챠 티켓에 당첨되셨습니다!! 🎉"
             await message.channel.send(msg)
+        else:
+            try:
+                db.loc[userid, 'wallet'] += rand_points * 0.15
+            except KeyError:
+                db.loc[userid, 'wallet'] = rand_points * 0.15
+
     await ay.process_commands(message)
 ##############################################################
 
@@ -487,32 +474,71 @@ async def admin(ctx, *args):
         
     
 @ay.command(name="홀짝")
-@commands.guild_only()
+#@commands.guild_only()
 async def gamble1(ctx):
     player_id = ctx.author.id
     player_name = ctx.author.name
-    player_cash = db[player_id, "wallet"]
+    player_cash = db.loc[player_id, "wallet"]
     if player_cash < 50:
         await ctx.send("어 시드 없으면 눈치챙겨라")
         return
-    def check(msg):
-        return msg.author == ctx.author and msg.channel == ctx.channel 
+    def check_seed(msg):
+        try:
+            int(msg.content)
+        except:
+            return False
+        return msg.author == ctx.author and msg.channel == ctx.channel
     await ctx.send("얼마 만큼 거시겠습니까? [Minium : 50 pt]")
-    reply = await ay.wait_for("message", check=check, timeout = 7)
-    amount = int(reply.content)
+    try:
+        reply = await ay.wait_for("message", check=check_seed, timeout = 7)
+        amount = int(reply.content)
+    except asyncio.TimeoutError:
+        await ctx.send('시간 초과! ⏲')
+        return
+    
     if amount < 50:
         await ctx.send("남자답게 50원이상 ㄱㄱ")
         return
     if player_cash < amount:
         await ctx.send("돈 가져와 돈")
         return
-    db[player_id, "wallet"] -= amount
+    db.loc[player_id, "wallet"] -= amount
+    
+    def check_gamble(msg):
+        return msg.author == ctx.author and msg.channel == ctx.channel and \
+             ("홀" in msg.content) ^ ("짝" in msg.content)
+            
+    def check_retry(msg):
+        return msg.author == ctx.author and msg.channel == ctx.channel and \
+            ("도전" in msg.content) ^ ("포기" in msg.content)
+            
+    while True:
+        await ctx.send("홀... 짝... ?")
+        pred = await ay.wait_for("message", check = check_gamble)
+        await asyncio.sleep(3)
+        answer = np.random.randint(2)
+        if "홀" in pred.content:
+            pred = 1
+        else:
+            pred = 0
+        
+        if pred == answer:
+            amount *= 2
+            await ctx.send(f"정답입니다! 현재 포인트 : {amount}pt, 계속하시겠습니까? [도전 or 포기]")
+            retry = await ay.wait_for("message", check = check_retry)
+            if "포기" in retry.content:
+                db.loc[player_id, "wallet"] += amount
+                await ctx.send(f"포기하셨습니다. 얻은 포인트 : {amount}pt")
+                return
+        else:
+            await ctx.send(f"💣 오답입니다! 💣")
+            return
 
-    answer = np.random.randint(2)
-    if pred == answer:
-        await ctx.send("정답입니다! 재도전 하기..?")
-        reply = await ay.wait_for("message", check=check, timeout = 30)
 
+
+    
+
+        
 
 
 ##########################################################
