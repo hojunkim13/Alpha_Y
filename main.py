@@ -189,7 +189,7 @@ async def set_info(ctx, *name):
     if uid == ctx.message.author.id:
         await ctx.send("자신의 평판은 남에 의해 결정 되는 법..")
         return
-    await ctx.send(f"{name}의 현재 정보: {db.loc[name,'info']}\n바꿀 정보를 입력해주세요.")
+    await ctx.send(f"{name}의 현재 정보: {db.loc[uid,'info']}\n바꿀 정보를 입력해주세요.")
     
     def check(msg):
         return msg.channel == ctx.channel and msg.author == ctx.message.author
