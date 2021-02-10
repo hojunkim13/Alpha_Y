@@ -8,7 +8,7 @@ import logging
 import os
 import asyncio
 from dotenv import load_dotenv
-from utils import prop_checker, data_collector, log_db, load_db
+from utils import prop_checker, data_collector, load_db
 
 intents = discord.Intents.default()
 intents.members = True
