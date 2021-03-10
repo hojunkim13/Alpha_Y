@@ -4,7 +4,7 @@ from discord.ext import commands
 import discord
 import numpy as np
 import threading
-import logging
+#import logging
 import os
 import asyncio
 from dotenv import load_dotenv
