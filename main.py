@@ -8,35 +8,28 @@ import logging
 import os
 import asyncio
 from dotenv import load_dotenv
-from utils import prop_checker, data_collector, log_db, load_db
+from Utils import propChecker, dataCollector, load_db
 
 intents = discord.Intents.default()
 intents.members = True
 load_dotenv()
-logger = logging.getLogger('discord')
-logger.setLevel(logging.DEBUG)
-handler = logging.FileHandler(
-    filename='discord.log', encoding='utf-8', mode='w')
-handler.setFormatter(logging.Formatter(
-    '%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
-logger.addHandler(handler)
 ###################################
 
 def log_db():
-    db.to_csv('db.csv', encoding = 'utf-8')
-    sdb.to_csv('item/items.csv', encoding = 'utf-8')
-    nlp_log.to_csv("NLP_log.csv", encoding = "utf-8")
+    db.to_pickle("./DB/DB.pkl")
+    sdb.to_pickle("./DB/item/items.pkl")
+    nlp_log.to_pickle("./DB/DL/NLP_log.pkl")
     threading.Timer(5, function = log_db).start()
 
 ###########################################################
 lotto_prob = [0.111] * 9
 lotto_prob.append(0.001 - (1e-4))
 lotto_prob.append(1e-4)
+admin_id = 398359177682092042
 ###########################################################
 db, sdb, nlp_log = load_db()
 log_db()
-ay = commands.Bot(command_prefix='.', intents=intents)
-
+ay = commands.Bot(command_prefix='.', intents = intents)
 
 @ay.event
 async def on_ready():
@@ -44,23 +37,21 @@ async def on_ready():
     print('id', ay.user.id)
     print('------------')
     status_list = [discord.Status.idle, discord.Status.online]
-    activity_list = [discord.Game("Who am I..?"),
-                    discord.Streaming(name = '랄루', url='https://www.twitch.tv/aba4647'),
-                    discord.Activity(type=discord.ActivityType.listening, name="Twilight - Kotaro Oshio"),
-                    discord.Activity(type=discord.ActivityType.watching, name="PAKA")]
+    activity_list = [discord.Game("I'm comeback!!"),
+                    discord.Activity(type=discord.ActivityType.listening, name="Can I Love..? - CosmicBoy"),
+                    discord.Activity(type=discord.ActivityType.watching, name="Netfilx")]
     status = status_list[np.random.choice(len(status_list), p = [0.1,0.9])]
     activity = np.random.choice(activity_list)
-    await ay.change_presence(activity=activity)
+    await ay.change_presence(activity=activity, status = status)
     
 
 @ay.event
 async def on_message(message):
     global db, sdb, nlp_log
-    if message.author == ay.user:
+    if message.author == ay.user or message.author.bot:
         return
-    if message.author.bot:
-        return
-    nlp_log = data_collector(message,db,nlp_log)
+
+    nlp_log = dataCollector(message,db,nlp_log)
     #register
     userid = message.author.id
     try:
@@ -70,9 +61,6 @@ async def on_message(message):
             name = message.author.nick
     except AttributeError:
         name = message.author.name
-    if userid not in db.index:
-        db.loc[int(userid)] = 0
-        db = db.index.astype("int")
     db.loc[userid,'name'] = name
     if not isinstance(message.channel, discord.channel.DMChannel):
         rand_points = np.random.choice(range(1, 12), p=lotto_prob)
@@ -131,9 +119,9 @@ async def wallet(ctx, *name):
     speaker = db.loc[ctx.message.author.id,"name"]
     member_list = [m.name for m in ctx.channel.members if not m.bot]
     if name not in member_list:
-        if prop_checker(speaker):
+        if propChecker(speaker):
             msg = f'어 {speaker}아 '
-            if prop_checker(name):
+            if propChecker(name):
                 if len(name) == 2:
                     msg += f'{name}이가 누구냐?'
                 else:
@@ -142,7 +130,7 @@ async def wallet(ctx, *name):
                 msg += f'{name}가 누구냐?'
         else:
             msg = f'어 {speaker}야 '
-            if prop_checker(name):
+            if propChecker(name):
                 if len(name) == 2:
                     msg += f'{name}이가 누구냐?'
                 else:
@@ -253,6 +241,11 @@ async def give_pt(ctx, *taker):
         if db.loc[giver_id, "wallet"] < amount:
             await ctx.send('어 돈복사 버그는 막아놧다^^')
             return
+        if amount == -1 and taker_id == admin_id:
+            pool = db.index.to_list()
+            taker_id = np.random.choice(pool)
+            taker = db.loc[taker_id, "name"]
+            await ctx.send(f'어 {taker} 선택됐다')
         print(f'Give PT: {giver}>>{taker}, {amount}pt')
         db.loc[giver_id, "wallet"] -= amount
         db.loc[taker_id, "wallet"] += amount
@@ -297,7 +290,7 @@ async def purchase(ctx, items_idx, quantity = 1):
         if ctx.message.author.dm_channel:
             await ctx.message.author.dm_channel.send(file = file)
         elif ctx.message.author.dm_channel is None:
-            channel = await ctx.message.author.create_dm()
+            await ctx.message.author.create_dm()
             await ctx.message.author.dm_channel.send(file = file)
         os.remove(storage_path+target_items[i])
     await ctx.message.author.dm_channel.send('🍰 구매하신 상품이 도착했습니다.')
@@ -316,7 +309,7 @@ async def gacha(ctx):
     if db.isnull().loc[player_id,'gticket']:
         db.loc[player_id,'gticket'] = 0
     if db.loc[player_id, 'wallet'] < 100 and db.loc[player_id,'gticket'] < 1:
-        if prop_checker(player):
+        if propChecker(player):
             msg = f'어 {player}아 씨드 100pt 없으면 저기 돈복사방 가서 앵벌이해라'
         else:
             msg = f'어 {player}야 씨드 100pt 없으면 저기 돈복사방 가서 앵벌이해라'
@@ -420,12 +413,12 @@ async def timer(ctx, *args):
 
 @ay.command(name="관리자")
 async def admin(ctx, *args):
-    if ctx.message.author.id != 398359177682092042:
+    if ctx.message.author.id != admin_id:
         await ctx.send("관리자만 사용 가능합니다.")
         return
     await ctx.send("명령어를 입력해주세요.\n# 포인트, 가챠티켓, 상품등록, 상품제거")
     def check(msg):
-        return msg.author.id == 398359177682092042 and msg.channel == ctx.channel
+        return msg.author.id == admin_id and msg.channel == ctx.channel
     try:
         reply = await ay.wait_for("message", check=check, timeout=10)
         if "취소" in reply.content:
@@ -447,7 +440,7 @@ async def admin(ctx, *args):
             amount = int(cmd[2])
             db.loc[target_id, "gticket"] += amount
             await ctx.send(f"{target_name}님의 가챠티켓 {amount:+} 했습니다.")
-        elif cmd[0] == "상품등록":
+        elif cmd[0] == "상품등록" or "상품추가":
             #상품등록 김호준 츄파춥스 250
             item = " ".join(cmd[2:-1])
             owner = target_name
@@ -463,7 +456,7 @@ async def admin(ctx, *args):
             else:
                 sdb.loc[item,"개수"] += amount
                 await ctx.send("정상적으로 등록되었습니다.")
-        elif cmd[0] == "상품제거":
+        elif cmd[0] == "상품제거" or "상품삭제":
             #상품삭제 투썸 머머머머
             item = " ".join(cmd[1:])
             sdb.drop([item], inplace = True)
@@ -535,10 +528,6 @@ async def gamble1(ctx):
             return
 
 
-
-    
-
-        
 
 
 ##########################################################

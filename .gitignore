@@ -1,6 +1,6 @@
 test.py
 item
-NLP_log.csv
+*.csv
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
